@@ -577,6 +577,7 @@ class MMPushTEnv(gym.Env):
         randomize_rotation=False,
         scale_low=1.0,
         scale_high=1.0,
+
         scale_aspect_limit=100.0,
         uniform_scaling=False,
         randomize_position=False,
