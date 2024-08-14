@@ -27,3 +27,10 @@ register(
     max_episode_steps=300,
     kwargs={"obs_type": "state", "scale_low": 2.0, "scale_high": 2.0},
 )
+
+register(
+    id="gym_pusht/PushT-multiscale",
+    entry_point="gym_pusht.envs:MMPushTEnv",
+    max_episode_steps=300,
+    kwargs={"obs_type": "state", "scale_low": [0.5, 1.0, 2.0], "scale_high": [0.5, 1.0, 2.0]},
+)

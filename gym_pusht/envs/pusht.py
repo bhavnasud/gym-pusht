@@ -577,7 +577,6 @@ class MMPushTEnv(gym.Env):
         randomize_rotation=False,
         scale_low=1.0,
         scale_high=1.0,
-
         scale_aspect_limit=100.0,
         uniform_scaling=False,
         randomize_position=False,
@@ -626,6 +625,7 @@ class MMPushTEnv(gym.Env):
                     high=np.array([512, 512]),
                     dtype=np.float64,
                 ),
+                "task_index": spaces.Discrete(3)
             }
         )
 
@@ -782,10 +782,14 @@ class MMPushTEnv(gym.Env):
         if self.obs_type == "pixels":
             return pixels
         elif self.obs_type == "pixels_agent_pos":
-            return {
+            to_return = {
                 "pixels": pixels,
                 "agent_pos": np.array(self.agent.position),
             }
+            # we need task id for multitask evaluation
+            if isinstance(self.scale_low, list):
+                to_return["task_index"] = self.chosen_task_index
+            return to_return
 
     def _get_goal_pose_body(self, pose):
         mass = 1
@@ -931,7 +935,13 @@ class MMPushTEnv(gym.Env):
 
         # Add agent, block, and goal zone.
         self.agent = self.add_circle((256, 400), 15)
-        if self.scale_low == self.scale_high:
+        if isinstance(self.scale_low, list):
+            self._length = 4
+            # choose random scale from list
+            self.chosen_task_index = np.random.randint(len(self.scale_low))
+            scale = self.scale_low[self.chosen_task_index]
+            self._scale = np.array([30.0, 30.0]) * scale
+        elif self.scale_low == self.scale_high:
             self._length = 4
             self._scale = np.array([30.0, 30.0]) * self.scale_low
         else:
