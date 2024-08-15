@@ -571,7 +571,6 @@ class MMPushTEnv(gym.Env):
         block_cog=None,
         damping=None,
         render_action=True,
-        render_size=96,
         reset_to_state=None,
         max_episode_length=300,
         randomize_rotation=False,
@@ -586,10 +585,11 @@ class MMPushTEnv(gym.Env):
         self.render_mode = render_mode
         self.observation_height = observation_height
         self.observation_width = observation_width
+        self.visualization_width = visualization_width
+        self.visualization_height = visualization_height
         self.obs_type = obs_type
         self.rng = np.random.RandomState(seed=seed)
         self.window_size = ws = 512  # The size of the PyGame window
-        self.render_size = render_size
         self.sim_hz = 100
         self.max_episode_length = max_episode_length
         # Local controller params.
@@ -851,13 +851,13 @@ class MMPushTEnv(gym.Env):
             # the clock is already ticked during in step for "human"
 
         img = np.transpose(np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2))
-        img = cv2.resize(img, (self.render_size, self.render_size))
+        img = cv2.resize(img, (self.visualization_width, self.visualization_height))
         if self.render_action:
             if self.render_action and (self.latest_action is not None):
                 action = np.array(self.latest_action)
-                coord = (action / 512 * self.render_size).astype(np.int32)
-                marker_size = int(8 / 96 * self.render_size)
-                thickness = int(1 / 96 * self.render_size)
+                coord = (action / 512 * self.visualization_height).astype(np.int32)
+                marker_size = int(8 / 96 * self.visualization_height)
+                thickness = int(1 / 96 * self.visualization_height)
                 cv2.drawMarker(
                     img,
                     coord,
