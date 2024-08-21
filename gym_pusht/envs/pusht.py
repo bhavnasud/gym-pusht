@@ -739,8 +739,8 @@ class MMPushTEnv(gym.Env):
         reward = np.clip(coverage / self.success_threshold, 0.0, 1.0)
         return reward
 
-    def render(self):
-        return self._render_frame(self.render_mode)
+    def render(self, visualize=True):
+        return self._render_frame(self.render_mode, visualize)
 
     def teleop_agent(self):
         TeleopAgent = collections.namedtuple("TeleopAgent", ["act"])
@@ -778,7 +778,7 @@ class MMPushTEnv(gym.Env):
                 "agent_pos": np.array(self.agent.position),
             }
 
-        pixels = self.render()
+        pixels = self.render(visualize=False)
         if self.obs_type == "pixels":
             return pixels
         elif self.obs_type == "pixels_agent_pos":
@@ -813,7 +813,7 @@ class MMPushTEnv(gym.Env):
         }
         return info
 
-    def _render_frame(self, mode):
+    def _render_frame(self, mode, visualize):
 
         if self.window is None and mode == "human":
             pygame.init()
@@ -851,13 +851,16 @@ class MMPushTEnv(gym.Env):
             # the clock is already ticked during in step for "human"
 
         img = np.transpose(np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2))
-        img = cv2.resize(img, (self.visualization_width, self.visualization_height))
+        width, height = self.observation_width, self.observation_height
+        if visualize:
+            width, height = self.visualization_width, self.visualization_height
+        img = cv2.resize(img, (width, height))
         if self.render_action:
             if self.render_action and (self.latest_action is not None):
                 action = np.array(self.latest_action)
-                coord = (action / 512 * self.visualization_height).astype(np.int32)
-                marker_size = int(8 / 96 * self.visualization_height)
-                thickness = int(1 / 96 * self.visualization_height)
+                coord = (action / 512 * height).astype(np.int32)
+                marker_size = int(8 / 96 * height)
+                thickness = int(1 / 96 * height)
                 cv2.drawMarker(
                     img,
                     coord,
