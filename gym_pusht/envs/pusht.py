@@ -580,6 +580,9 @@ class MMPushTEnv(gym.Env):
         uniform_scaling=False,
         randomize_position=False,
         rand_pos_scale=0.0,
+        shape_idx=0,
+        variable_scale=False,
+        variable_shape=False
     ):
         print(f"Creating PushT Env with seed {seed}.")
         self.render_mode = render_mode
@@ -597,6 +600,9 @@ class MMPushTEnv(gym.Env):
         self.control_hz = self.metadata["render_fps"]
         # legcay set_state for data compatibility
         self.legacy = legacy
+        self.shape_idx = shape_idx
+        self.variable_scale = variable_scale
+        self.variable_shape = variable_shape
 
         self.randomize_rotation = randomize_rotation
         self.scale_low, self.scale_high = scale_low, scale_high
@@ -787,7 +793,7 @@ class MMPushTEnv(gym.Env):
                 "agent_pos": np.array(self.agent.position),
             }
             # we need task id for multitask evaluation
-            if isinstance(self.scale_low, list):
+            if self.variable_scale or self.variable_shape:
                 to_return["task_index"] = self.chosen_task_index
             return to_return
 
@@ -938,14 +944,28 @@ class MMPushTEnv(gym.Env):
 
         # Add agent, block, and goal zone.
         self.agent = self.add_circle((256, 400), 15)
-        if isinstance(self.scale_low, list):
-            self._length = 4
-            # choose random scale from list
+        self._length = 4
+        if self.variable_scale and self.variable_shape:
+            self.chosen_task_index = np.random.randint(len(self.scale_low) + len(self.shape_idx))
+            # chosen task is a variable scale task
+            if self.chosen_task_index < len(self.scale_low):
+                scale = self.scale_low[self.chosen_task_index]
+                self._scale = np.array([30.0, 30.0]) * scale
+            # chosen task is a variable shape task
+            else:
+                scale = 1.0
+                self._scale = np.array([30.0, 30.0]) * scale
+                self.shape_idx = self.chosen_task_index - len(self.scale_low) + 1
+        elif self.variable_scale:
             self.chosen_task_index = np.random.randint(len(self.scale_low))
             scale = self.scale_low[self.chosen_task_index]
             self._scale = np.array([30.0, 30.0]) * scale
+        elif self.variable_shape:
+            self.chosen_task_index = np.random.randint(len(self.shape_idx))
+            scale = 1.0
+            self._scale = np.array([30.0, 30.0]) * scale
+            self.shape_idx = self.chosen_task_index + 1
         elif self.scale_low == self.scale_high:
-            self._length = 4
             self._scale = np.array([30.0, 30.0]) * self.scale_low
         else:
             scale_low, scale_high = self.scale_low, self.scale_high
@@ -1028,12 +1048,37 @@ class MMPushTEnv(gym.Env):
             (-length * scale / 2, 0),
         ]
         inertia1 = pymunk.moment_for_poly(mass, vertices=vertices1)
-        vertices2 = [
-            (-scale / 2, scale),
-            (-scale / 2, length * scale),
-            (scale / 2, length * scale),
-            (scale / 2, scale),
-        ]
+        if self.shape_idx == 0:
+            # regular T block
+            vertices2 = [
+                (-scale / 2, scale),
+                (-scale / 2, length * scale),
+                (scale / 2, length * scale),
+                (scale / 2, scale),
+            ]
+        elif self.shape_idx == 1:
+            # T with one side triangle
+            vertices2 = [
+                (-scale / 2, scale),
+                (scale / 2, length * scale),
+                (scale / 2, scale),
+            ]
+        elif self.shape_idx == 2:
+            # L
+            vertices2 = [
+                ((length * scale / 2) - scale, scale),
+                ((length * scale / 2) - scale, length * scale),
+                (length * scale / 2, length * scale),
+                (length * scale / 2, scale),
+            ]
+        elif self.shape_idx == 3:
+            # hexagon
+            vertices2 = [
+                (-length * scale / 2, scale),
+                (0, scale * 2),
+                (length * scale / 2, scale),
+            ]
+
         inertia2 = pymunk.moment_for_poly(mass, vertices=vertices1)
         body = pymunk.Body(mass, inertia1 + inertia2)
         shape1 = pymunk.Poly(body, vertices1)
